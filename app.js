@@ -1,6 +1,7 @@
 const express = require("express");
-const app = express();
+const { setWebhook } = require("./setWebhook");
 
+const app = express();
 app.use(express.json());
 
 app.get("/", (req, res) => {
@@ -8,8 +9,12 @@ app.get("/", (req, res) => {
 });
 
 app.post("/calculator", (req, res) => {
+  const { id, first_name, username } = req.body.message.chat;
+  const { text } = req.body.message;
+
+  console.log(req.body);
+
   const OPERATORS = ["+", "-", "*", "/"];
-  const request = req.body.request;
   let result = 0;
   let error;
   let operators = [];
@@ -17,7 +22,7 @@ app.post("/calculator", (req, res) => {
   let tempNum = "";
 
   //remove all spaces
-  const trimRequest = request.trim();
+  const trimRequest = text.trim();
 
   if (trimRequest.length === 0) {
     error = "incomplete expression: ";
@@ -38,11 +43,11 @@ app.post("/calculator", (req, res) => {
 
     //e.g. request="15"
     if (operators.length === 0 && numbers.length > 0) {
-      result = `${request} = ${request}`;
+      result = `${text} = ${text}`;
     }
     //e.g. request="2+"
     else if (operators.length > 0 && numbers.length <= 1) {
-      error = `incomplete expression: ${request}`;
+      error = `incomplete expression: ${text}`;
     } else {
       // console.log(operators);
       // console.log(numbers);
@@ -54,7 +59,7 @@ app.post("/calculator", (req, res) => {
 
         //if request operator doesn't include in [+, -, *, /]
         if (!OPERATORS.includes(operator)) {
-          error = `incomplete expression: ${request}`;
+          error = `incomplete expression: ${text}`;
           break;
         }
 
@@ -110,17 +115,30 @@ app.post("/calculator", (req, res) => {
 
       result = result.toLocaleString();
 
-      result = [
-        `${result} = ${request}`,
-        `${request} = ${result}`,
-        `${result}`,
-      ];
+      // result = [`${result} = ${text}`, `${text} = ${result}`, `${result}`];
     }
   }
 
-  res.status(error ? 400 : 200).send({
-    res: error || result,
-  });
+  // res.status(error ? 400 : 200).send({
+  //   res: error || result,
+  // });
+
+  fetch(
+    "https://api.telegram.org/bot8765110803:AAG7OGGxjQt2tqcGSZ1uydxoVI9RGQeG7qQ/sendMessage",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: id,
+        text: error || result,
+      }),
+    },
+  );
+
+  return res.send();
 });
 
-app.listen(3000);
+app.listen(3000, () => {
+  setWebhook();
+  console.log("Server started!");
+});
